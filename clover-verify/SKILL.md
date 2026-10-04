@@ -18,7 +18,8 @@ clover-review (per-PR checklist) and clover-implement (PR conventions) with skil
   sometimes prints nothing; use `--json`).
 - PRs: `gh pr list -R clover-cli/cli --state all --limit 100 --search "N" --json number,title,body,state,isDraft,baseRefName,headRefName,mergedAt`,
   keep those whose title ends with `(#N, k)` or whose body says `Part of #N` / `Closes #N`. Also
-  check `closingIssuesReferences`. Order by k.
+  check `closingIssuesReferences`. Order by k. It stays empty for PRs whose base isn't the default
+  branch (stacked PRs); that's expected, not a finding. GitHub links it once the PR retargets to main.
 
 ## 2. Check the series
 
@@ -39,6 +40,8 @@ clover-review (per-PR checklist) and clover-implement (PR conventions) with skil
 - Builds on its own: `git worktree add ~/clover/verify-<n> <head sha>`, symlink or `npm ci`, then
   `npm run build && npm test && npm run lint`. It must pass at its own position in the stack, not
   only at the tip. Remove the worktree after.
+- Diff size: compare against the merge base (`git diff origin/<base>...origin/<head>`, three dots).
+  A two-dot diff against a main that moved on shows unrelated changes.
 - CI: `gh pr checks <n>` (merged PRs: the merge commit's checks).
 
 ## 4. Double-check every finding

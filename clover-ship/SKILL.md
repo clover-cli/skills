@@ -51,7 +51,8 @@ Repo: clover-cli/cli, local clone ~/clover/cli. Read ~/clover/cli/AGENTS.md firs
    - Coverage gap: add it to the PR it belongs in, or as a new PR at the right position. Shift the
      `(#N, k)` titles and `Depends on` lines after it, and keep `Closes #N` on the last PR only.
    After a fix on PR k, merge its branch into every PR above it (`git merge`, no force), run the checks
-   at each one, and push. Then run clover-verify again. Stop after 2 fix rounds; report whatever is
+   at each one, and push. Expect small conflicts where a child added code next to a line the fix
+   removed; resolve by keeping the child's addition plus the fix. Then run clover-verify again. Stop after 2 fix rounds; report whatever is
    still open instead of looping.
 6. Report the review order (the `(#N, k)` title suffix gives it): k, PR URL, title, base, +/- lines,
    then the clover-verify verdict, what the fix rounds changed, and anything still open. Then
@@ -72,9 +73,11 @@ Repo: clover-cli/cli, local clone ~/clover/cli. Read ~/clover/cli/AGENTS.md firs
 
 ## Pitfalls
 
+- Worktrees with a symlinked node_modules: `node_modules/` in .gitignore doesn't match a symlink,
+  so `git add -A` commits it. Add `node_modules` to .git/info/exclude before committing in any
+  worktree (shared by all worktrees), and check `git diff --name-only` before every push.
 - Big issues (many services): commit the shared helpers to a scratch base branch first, then have
-  subagents build one service each in `git worktree`s off it (node_modules symlinked; add
-  `node_modules` to .git/info/exclude because `node_modules/` in .gitignore doesn't match a symlink).
+  subagents build one service each in `git worktree`s off it (node_modules symlinked).
   Assemble the chain yourself, editing the shared registration file and docs per PR, and run the
   checks on every commit. Delete the worktrees and scratch branches afterwards.
 - Each PR, merged in order, must keep main green on its own: no dead imports, no tests that only pass

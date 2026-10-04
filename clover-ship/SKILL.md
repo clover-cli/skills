@@ -7,7 +7,8 @@ version: 1.0.0
 # Clover Ship Bot
 
 Split an issue into atomic tasks, then implement each one as its own PR, in order.
-This chains clover-triage and clover-implement: load both with skill_view and follow them.
+This chains clover-triage, clover-implement, clover-verify and clover-reformat: load them with
+skill_view and follow them.
 Every clover-implement hard rule applies to every PR: open ready for review (not draft), the
 user's identity, no AI attribution, never merge/approve/close, never push to main, never force-push a branch the
 user touched.
@@ -29,8 +30,10 @@ Repo: clover-cli/cli, local clone ~/clover/cli. Read ~/clover/cli/AGENTS.md firs
    as possible for review.
 4. For each task, in order:
    - Base: `origin/main` if it's independent; otherwise the branch of the task it depends on (stacked).
-   - `git switch -c <type>/<slug> <base>`. Make the smallest change, plus tests. Run
-     `npm run build && npm test && npm run lint`.
+   - `git switch -c <type>/<slug> <base>`. Make the smallest change, plus tests.
+   - Before committing, apply the clover-reformat rules to your own diff (reuse helpers, match sibling
+     files, no dead code, no restating comments, behavior-named tests). Cleaning up before the push
+     beats a reformat commit after it. Then run `npm run build && npm test && npm run lint`.
    - `git diff --stat` to confirm it's atomic. `git commit -m "<type>: <what>"`. `git push -u origin HEAD`.
    - `gh pr create -R clover-cli/cli --base <main or parent branch> --title "<type>: <what> (#N, k)" --body ...`.
      Title ends with `(#N, k)`: the parent issue and the PR's position in the stack (1-based), e.g.
@@ -39,9 +42,21 @@ Repo: clover-cli/cli, local clone ~/clover/cli. Read ~/clover/cli/AGENTS.md firs
      the checks that passed. No `Series:` line.
    - If build/test/lint fails and can't be fixed within the task's scope: stop. Leave the opened PRs
      as they are, don't push the failing branch, and report what's done and what's left.
-5. Report the review order (the `(#N, k)` title suffix gives it): k, PR URL, title, base, +/- lines.
-   Then `git switch` back to the user's original branch. Don't edit the PRs after opening them
-   unless the user asks.
+5. Verify the whole stack with clover-verify (load it with skill_view) on issue N. Then, for each
+   confirmed finding:
+   - Bug, missing test, wrong title/body/base, broken check: fix it on the PR's branch as a new commit
+     (`fix: ...`, or `gh pr edit` for title/body/base). Never force-push.
+   - Hard-to-maintain code (duplication, unclear names, over-long functions, sibling mismatch): run
+     clover-reformat on that PR.
+   - Coverage gap: add it to the PR it belongs in, or as a new PR at the right position. Shift the
+     `(#N, k)` titles and `Depends on` lines after it, and keep `Closes #N` on the last PR only.
+   After a fix on PR k, merge its branch into every PR above it (`git merge`, no force), run the checks
+   at each one, and push. Then run clover-verify again. Stop after 2 fix rounds; report whatever is
+   still open instead of looping.
+6. Report the review order (the `(#N, k)` title suffix gives it): k, PR URL, title, base, +/- lines,
+   then the clover-verify verdict, what the fix rounds changed, and anything still open. Then
+   `git switch` back to the user's original branch. Outside steps 4-5, don't edit the PRs unless the
+   user asks.
 
 ## Stacking
 
